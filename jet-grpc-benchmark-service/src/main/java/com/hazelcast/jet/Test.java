@@ -11,10 +11,11 @@ import io.grpc.stub.StreamObserver;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 public class Test {
 
-    public static final int THREADS = 48;
+    public static final int THREADS = 8;
 
     public static void main(String[] args) throws InterruptedException {
 
@@ -22,16 +23,16 @@ public class Test {
         long start = System.currentTimeMillis();
         for (int i = 0; i < THREADS; i++) {
 
-            ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 42123)
+            ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 8080)
                                                           .directExecutor()
                                                           .usePlaintext()
                                                           .build();
-            GreeterStub stub = GreeterGrpc.newStub(channel);
+            GreeterGrpc.GreeterStub stub = GreeterGrpc.newStub(channel);
             for (int k = 0; k < 1; k++) {
 
                 new Thread(() -> {
 
-                    for (int j = 0; j < 100_000; j++) {
+                    for (int j = 0; j < 100000; j++) {
                         HelloRequest request = HelloRequest.newBuilder().setValue(j).build();
                         CompletableFuture<Integer> future = new CompletableFuture<>();
                         stub.sayHelloUnary(request, new StreamObserver<HelloReply>() {

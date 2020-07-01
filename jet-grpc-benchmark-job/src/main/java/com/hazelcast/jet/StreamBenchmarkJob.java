@@ -76,8 +76,8 @@ public class StreamBenchmarkJob {
         JetInstance jet = Jet.bootstrappedInstance();
         String runId = UuidUtil.newUnsecureUuidString();
 
-        String host = getProp("host");
-        int port = getIntProp("port");
+        String host = getProp("localhost");
+        int port = getIntProp("8080");
         int maxItemsPerSecond = getIntProp("maxItemsPerSecond", "10000000");
         int windowSizeSeconds = getIntProp("windowSize", "30");
         long windowSizeMillis = Duration.ofSeconds(windowSizeSeconds).toMillis();

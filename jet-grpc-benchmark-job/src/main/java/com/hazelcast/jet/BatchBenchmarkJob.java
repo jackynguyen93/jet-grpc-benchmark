@@ -111,31 +111,31 @@ public class BatchBenchmarkJob {
     public static void main(String[] args) {
         JetInstance jet = Jet.bootstrappedInstance();
 
-        String host = Utils.getProp("host");
-        int port = Utils.getIntProp("port");
-        String executor = Utils.getProp("executor");
-        int mapBatchSize = Utils.getIntProp("mapBatchSize", "1024");
-        int jobBatchSize = Utils.getIntProp("jobBatchSize", "50000");
-        int batchMultiplier = Utils.getIntProp("multiplier", "10");
-        int[] maxConcurrentOpsValues = Utils.getIntPropArray("maxConcurrentOps", "4");
-        int[] localParallelismValues = Utils.getIntPropArray("localParallelism",
-                String.valueOf(Runtime.getRuntime().availableProcessors()));
+        String host = "localhost";//Utils.getProp("localhost");
+        int port = 8080; // Utils.getIntProp("8080");
+        String executor = "direct" ; //Utils.getProp("executor");
+        int mapBatchSize = 1024; // Utils.getIntProp("mapBatchSize", "1024");
+        int jobBatchSize = 500000; //Utils.getIntProp("jobBatchSize", "50000");
+        int batchMultiplier = 10; //Utils.getIntProp("multiplier", "10");
+        int[] maxConcurrentOpsValues = new int[] {12} ;//Utils.getIntPropArray("maxConcurrentOps", "4");
+        int[] localParallelismValues =  new int[] {24}; //Utils.getIntPropArray("localParallelism",String.valueOf(Runtime.getRuntime().availableProcessors()));
 
         List<String> results = new ArrayList<>();
 
         for (int maxConcurrentOps : maxConcurrentOpsValues) {
             for (int localParallelism : localParallelismValues) {
-                String result = new BatchBenchmarkJob(jet, host, port, executor, jobBatchSize, maxConcurrentOps,
-                        localParallelism, mapBatchSize)
-                        .withUnaryPipeline()
-                        .runAndReport();
-                results.add(result);
-
-                result = new BatchBenchmarkJob(jet, host, port, executor, jobBatchSize, maxConcurrentOps,
-                        localParallelism, mapBatchSize)
-                        .withBidirectinalStreamingPipeline()
-                        .runAndReport();
-                results.add(result);
+                String result;
+//               result = new BatchBenchmarkJob(jet, host, port, executor, jobBatchSize, maxConcurrentOps,
+//                        localParallelism, mapBatchSize)
+//                        .withUnaryPipeline()
+//                        .runAndReport();
+//                results.add(result);
+//
+//                result = new BatchBenchmarkJob(jet, host, port, executor, jobBatchSize, maxConcurrentOps,
+//                        localParallelism, mapBatchSize)
+//                        .withBidirectinalStreamingPipeline()
+//                        .runAndReport();
+//                results.add(result);
 
                 result = new BatchBenchmarkJob(jet, host, port, executor, jobBatchSize * batchMultiplier, maxConcurrentOps,
                         localParallelism, mapBatchSize)
@@ -143,11 +143,11 @@ public class BatchBenchmarkJob {
                         .runAndReport();
                 results.add(result);
 
-                result = new BatchBenchmarkJob(jet, host, port, executor, jobBatchSize * batchMultiplier, maxConcurrentOps,
-                        localParallelism, mapBatchSize)
-                        .withBidirectionalStreamingBatchPipeline()
-                        .runAndReport();
-                results.add(result);
+//                result = new BatchBenchmarkJob(jet, host, port, executor, jobBatchSize * batchMultiplier, maxConcurrentOps,
+//                        localParallelism, mapBatchSize)
+//                        .withBidirectionalStreamingBatchPipeline()
+//                        .runAndReport();
+//                results.add(result);
             }
         }
 

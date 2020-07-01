@@ -43,12 +43,12 @@
         <dependency>
           <groupId>com.hazelcast.jet</groupId>
           <artifactId>hazelcast-jet</artifactId>
-          <version>4.2-SNAPSHOT</version>
+          <version>4.1.1</version>
         </dependency>
         <dependency>
           <groupId>com.hazelcast.jet</groupId>
           <artifactId>hazelcast-jet-grpc</artifactId>
-          <version>4.2-SNAPSHOT</version>
+          <version>4.1.1</version>
         </dependency>
       </dependencies>
     </profile>
@@ -57,13 +57,13 @@
     <dependency>
       <groupId>com.hazelcast.jet</groupId>
       <artifactId>hazelcast-jet</artifactId>
-      <version>4.2-SNAPSHOT</version>
+      <version>4.1.1</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>com.hazelcast.jet</groupId>
       <artifactId>hazelcast-jet-grpc</artifactId>
-      <version>4.2-SNAPSHOT</version>
+      <version>4.1.1</version>
       <scope>provided</scope>
     </dependency>
   </dependencies>

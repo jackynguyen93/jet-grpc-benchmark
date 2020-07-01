@@ -10,11 +10,9 @@ import com.hazelcast.jet.grpc.greeter.GreeterOuterClass.HelloRequestList;
 import io.grpc.BindableService;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
-import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
-import io.grpc.netty.shaded.io.netty.channel.nio.NioEventLoop;
-import io.grpc.netty.shaded.io.netty.channel.nio.NioEventLoopGroup;
-import io.grpc.netty.shaded.io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.grpc.netty.shaded.io.netty.channel.epoll.EpollEventLoopGroup;
+import io.grpc.netty.shaded.io.netty.channel.epoll.EpollServerSocketChannel;
 import io.grpc.netty.shaded.io.netty.util.concurrent.DefaultThreadFactory;
 import io.grpc.stub.StreamObserver;
 
@@ -27,37 +25,42 @@ import java.util.concurrent.ForkJoinPool.ForkJoinWorkerThreadFactory;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
-
 /**
  * Hello world!
  */
-public class GrpcServer {
+public class GrpcServer2 {
 
     public static final int WAIT_TIME = 10;
     static JedisHelper jedisHelper = new JedisHelper();
 
+
     public static void main(String[] args) throws Exception {
+        //Server server = createServer(args[0], new GreeterServiceImpl(args[1]));
         jedisHelper.initialize();
-        Server server = createServer("direct", new GreeterServiceImpl());
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            try {
-                server.shutdownNow().awaitTermination();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }));
+        Server server = ServerBuilder.forPort(8080).addService(new GreeterServiceImpl("blocking-wait")).build();
+        System.out.println("Starting server...");
+        server.start();
+        System.out.println("Server started!");
         server.awaitTermination();
+//        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+//            try {
+//                server.shutdownNow().awaitTermination();
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//        }));
+//        server.awaitTermination();
     }
 
     private static Server createServer(String executor, BindableService service) throws IOException {
-        final int port = 8080;
+        final int port = 42123;
         int processors = Runtime.getRuntime().availableProcessors();
         NettyServerBuilder builder = NettyServerBuilder.forPort(port);
 
         ThreadFactory tf = new DefaultThreadFactory("server-elg-", true);
-        builder.bossEventLoopGroup(new NioEventLoopGroup(1, tf));
-        builder.workerEventLoopGroup(new NioEventLoopGroup(0, tf));
-        builder.channelType(NioServerSocketChannel.class);
+        builder.bossEventLoopGroup(new EpollEventLoopGroup(1, tf));
+        builder.workerEventLoopGroup(new EpollEventLoopGroup(0, tf));
+        builder.channelType(EpollServerSocketChannel.class);
 
         if (executor.equals("direct")) {
             System.out.println("Using directExecutor()");
@@ -91,24 +94,27 @@ public class GrpcServer {
         return server;
     }
 
-    private static class GreeterServiceImpl extends com.hazelcast.jet.grpc.greeter.GreeterGrpc.GreeterImplBase {
+    public static class GreeterServiceImpl extends com.hazelcast.jet.grpc.greeter.GreeterGrpc.GreeterImplBase {
 
         private final String workloadType;
 
-        private GreeterServiceImpl() {
-            this.workloadType = "No";
+        private GreeterServiceImpl(String workloadType) {
+            System.out.println("Workload type: " + workloadType);
+            this.workloadType = workloadType;
         }
 
         @Override
         public void sayHelloUnary(HelloRequest request, StreamObserver<HelloReply> responseObserver) {
-            jedisHelper.subtractBalance(new Order("u1", 1D, "u1", new Date()));
+
+            jedisHelper.subtractBalance(new Order("1", 1D, "u1", new Date()));
 
             HelloReply reply = HelloReply.newBuilder()
-                    .setValue(1)
-                    .build();
+                                         .setValue(1)
+                                         .build();
             //waitIfNeeded();
             responseObserver.onNext(reply);
             responseObserver.onCompleted();
+
         }
 
         @Override
@@ -117,8 +123,7 @@ public class GrpcServer {
             request.getValueList()
                    .stream()
                    .map(item -> {
-                      // waitIfNeeded();
-                       jedisHelper.subtractBalance(new Order("u1", 1D, "u1", new Date()));
+                       waitIfNeeded();
                        return item * 2;
                    })
                    .forEach(builder::addValue);
@@ -129,7 +134,6 @@ public class GrpcServer {
 
         @Override
         public StreamObserver<HelloRequest> sayHelloBidirectional(StreamObserver<HelloReply> responseObserver) {
-
             return new StreamObserver<HelloRequest>() {
 
                 @Override
@@ -137,8 +141,7 @@ public class GrpcServer {
                     HelloReply reply = HelloReply.newBuilder()
                                                  .setValue(value.getValue() * 2)
                                                  .build();
-                    //waitIfNeeded();
-                    jedisHelper.subtractBalance(new Order("u1", 1D, "u1", new Date()));
+                    waitIfNeeded();
                     responseObserver.onNext(reply);
                 }
 
@@ -156,7 +159,6 @@ public class GrpcServer {
 
         @Override
         public StreamObserver<HelloRequestList> sayHelloListBidirectional(StreamObserver<HelloReplyList> responseObserver) {
-
             return new StreamObserver<HelloRequestList>() {
 
                 @Override
@@ -165,8 +167,7 @@ public class GrpcServer {
                     value.getValueList()
                          .stream()
                          .map(item -> {
-                             //waitIfNeeded();
-                             jedisHelper.subtractBalance(new Order("u1", 1D, "u1", new Date()));
+                             waitIfNeeded();
                              return item * 2;
                          })
                          .forEach(builder::addValue);
