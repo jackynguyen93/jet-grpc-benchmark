@@ -1,11 +1,14 @@
 package com.hazelcast.jet;
 
 import com.hazelcast.jet.dto.Order;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.Pipeline;
+import org.newsclub.net.unix.AFUNIXSocket;
+import org.newsclub.net.unix.AFUNIXSocketAddress;
+import redis.clients.jedis.*;
 
 import javax.annotation.PostConstruct;
+import java.io.File;
+import java.io.IOException;
+import java.net.Socket;
 import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
@@ -31,20 +34,77 @@ public class JedisHelper {
             "else return false end";
     private static final String BALANCE_KEY_FORMAT = "balance#$uid";
 
+
+    private static class UdsJedisSocketFactory implements JedisSocketFactory {
+
+        private static final File UDS_SOCKET = new File("/var/run/redis/redis.sock");
+
+        @Override
+        public Socket createSocket() throws IOException {
+            Socket socket = AFUNIXSocket.newStrictInstance();
+            socket.connect(new AFUNIXSocketAddress(UDS_SOCKET), Protocol.DEFAULT_TIMEOUT);
+            return socket;
+        }
+
+        @Override
+        public String getDescription() {
+            return UDS_SOCKET.toString();
+        }
+
+        @Override
+        public String getHost() {
+            return UDS_SOCKET.toString();
+        }
+
+        @Override
+        public void setHost(String host) {
+        }
+
+        @Override
+        public int getPort() {
+            return 0;
+        }
+
+        @Override
+        public void setPort(int port) {
+        }
+
+        @Override
+        public int getConnectionTimeout() {
+            return Protocol.DEFAULT_TIMEOUT;
+        }
+
+        @Override
+        public void setConnectionTimeout(int connectionTimeout) {
+        }
+
+        @Override
+        public int getSoTimeout() {
+            return Protocol.DEFAULT_TIMEOUT;
+        }
+
+        @Override
+        public void setSoTimeout(int soTimeout) {
+        }
+    }
+
+
     @PostConstruct
     public void initialize() {
-        jedisPool = new JedisPool(redisHost);
-        jedis = jedisPool.getResource();
+       // jedisPool = new JedisPool(redisHost);
+
+        //jedis = jedisPool.getResource();
+        jedis = new Jedis(new UdsJedisSocketFactory());
         pipelined = jedis.pipelined();
         new Thread(() -> {
             System.out.println("Start sync pipeline job");
             while(true) {
                 doSyncPipeline();
-              /*  try {
-                    Thread.sleep(50);
+                try {
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
-                }*/
+                }
             }
         }).start();
         //LOG.info("test");
@@ -53,6 +113,11 @@ public class JedisHelper {
 
     public void subtractBalance(Order order) {
         subtractRequestQueue.add(order);
+//        synchronized (pipelined) {
+//            subtractRequestQueue.add(order);
+//            pipelined.incrByFloat("balance#u1", 1L);
+//
+//        }
     }
 
     public void doSyncPipeline() {
@@ -61,14 +126,23 @@ public class JedisHelper {
             int numOfReqs = subtractRequestQueue.size();
             String[] orderIds = new String[numOfReqs];
             for (int index = 0; index < numOfReqs; index ++) {
-                long time = System.currentTimeMillis();
-            //    Order order = subtractRequestQueue.poll();
-               // Order order = new Order()
-              //  orderIds[index] = order.getId();
-                pipelined.eval(SUBTRACT_BALANCE_LUA_SCRIPT, Collections.singletonList(getBalanceKey("u1")),
-                        Collections.singletonList(String.valueOf("1")));
+                subtractRequestQueue.poll();
+                //long time = System.currentTimeMillis();
+                Order order = subtractRequestQueue.poll();
+             //   orderIds[index] = order.getId();
+                pipelined.incrByFloat("balance#u1", 1L);
+                pipelined.eval(SUBTRACT_BALANCE_LUA_SCRIPT, Collections.singletonList(getBalanceKey("u1")), Collections.singletonList(String.valueOf("1")));
+
             }
-           // List<Object> responseList = pipelined.syncAndReturnAll();
+
+            synchronized (pipelined) {
+                long start = System.currentTimeMillis();
+                List<Object> responseList = pipelined.syncAndReturnAll();
+                long time = System.currentTimeMillis() - start;
+                System.out.println("Took: " + time + " size" + responseList.size());
+            }
+
+
 
            // for (int i = 0; i < responseList.size(); i++) {
           //      //LOG.info("order id: " + orderIds[i] + " ,result: " + responseList.get(i));
