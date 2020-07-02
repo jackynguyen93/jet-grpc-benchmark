@@ -20,6 +20,7 @@ public class JedisHelper {
     private Jedis jedis;
     private Pipeline pipelined;
     private JedisPool jedisPool;
+    private String hashScript;
 
     String redisHost = "redis://localhost:6379";
 
@@ -30,7 +31,7 @@ public class JedisHelper {
 
     private static final String SUBTRACT_BALANCE_LUA_SCRIPT = "local balance=redis.call('get', KEYS[1]) " +
             "if balance and (balance - ARGV[1]) >= 0 " +
-            "then redis.call('set', KEYS[1], balance - ARGV[1]) return true " +
+            "then redis.call('incrby', KEYS[1], - ARGV[1]) return true " +
             "else return false end";
     private static final String BALANCE_KEY_FORMAT = "balance#$uid";
 
@@ -96,6 +97,7 @@ public class JedisHelper {
         //jedis = jedisPool.getResource();
         jedis = new Jedis(new UdsJedisSocketFactory());
         pipelined = jedis.pipelined();
+        hashScript = jedis.scriptLoad(SUBTRACT_BALANCE_LUA_SCRIPT);
         new Thread(() -> {
             System.out.println("Start sync pipeline job");
             while(true) {
@@ -112,12 +114,11 @@ public class JedisHelper {
     }
 
     public void subtractBalance(Order order) {
-        subtractRequestQueue.add(order);
-//        synchronized (pipelined) {
-//            subtractRequestQueue.add(order);
-//            pipelined.incrByFloat("balance#u1", 1L);
-//
-//        }
+        synchronized (pipelined) {
+            subtractRequestQueue.add(order);
+            pipelined.evalsha(hashScript, Collections.singletonList(getBalanceKey(order.getUid())),
+                    Collections.singletonList(String.valueOf(order.getAmount())));
+        }
     }
 
     public void doSyncPipeline() {
@@ -126,20 +127,14 @@ public class JedisHelper {
             int numOfReqs = subtractRequestQueue.size();
             String[] orderIds = new String[numOfReqs];
             for (int index = 0; index < numOfReqs; index ++) {
-                subtractRequestQueue.poll();
-                //long time = System.currentTimeMillis();
                 Order order = subtractRequestQueue.poll();
-             //   orderIds[index] = order.getId();
-                pipelined.incrByFloat("balance#u1", 1L);
-                pipelined.eval(SUBTRACT_BALANCE_LUA_SCRIPT, Collections.singletonList(getBalanceKey("u1")), Collections.singletonList(String.valueOf("1")));
-
+                orderIds[index] = order.getId();
             }
-
             synchronized (pipelined) {
                 long start = System.currentTimeMillis();
                 List<Object> responseList = pipelined.syncAndReturnAll();
                 long time = System.currentTimeMillis() - start;
-                System.out.println("Took: " + time + " size" + responseList.size());
+                System.out.println("Took: " + time + " size " + responseList.size());
             }
 
 
