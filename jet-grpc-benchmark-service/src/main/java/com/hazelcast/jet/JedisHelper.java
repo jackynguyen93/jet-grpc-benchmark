@@ -92,10 +92,10 @@ public class JedisHelper {
 
     @PostConstruct
     public void initialize() {
-       // jedisPool = new JedisPool(redisHost);
+        jedisPool = new JedisPool(redisHost);
 
-        //jedis = jedisPool.getResource();
-        jedis = new Jedis(new UdsJedisSocketFactory());
+        jedis = jedisPool.getResource();
+       // jedis = new Jedis(new UdsJedisSocketFactory());
         pipelined = jedis.pipelined();
         hashScript = jedis.scriptLoad(SUBTRACT_BALANCE_LUA_SCRIPT);
         new Thread(() -> {
