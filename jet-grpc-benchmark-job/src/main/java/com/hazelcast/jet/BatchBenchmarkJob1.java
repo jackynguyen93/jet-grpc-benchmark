@@ -19,10 +19,7 @@ import com.hazelcast.jet.pipeline.Pipeline;
 import com.hazelcast.jet.pipeline.ServiceFactory;
 import com.hazelcast.jet.pipeline.Sinks;
 import com.hazelcast.jet.pipeline.SourceBuilder;
-import com.hiko.proto.BalanceServiceGrpc;
-import com.hiko.proto.ChangeReplyList;
-import com.hiko.proto.ChangeRequest;
-import com.hiko.proto.ChangeRequestList;
+
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -30,12 +27,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 import static com.hazelcast.jet.grpc.GrpcServices.bidirectionalStreamingService;
 import static com.hazelcast.jet.grpc.GrpcServices.unaryService;
 
-public class BatchBenchmarkJob {
+public class BatchBenchmarkJob1 {
 
     private static String FORMAT_HEADER = "%-30s %-30s %-30s %30s";
     private static String FORMAT = "%-30s %-30d %-30d %30.2f";
@@ -53,8 +49,8 @@ public class BatchBenchmarkJob {
     private int mapBatchSize;
     private Pipeline pipeline;
 
-    public BatchBenchmarkJob(JetInstance jet, String host, int port, String executor, int jobBatchSize, int maxConcurrentOps, int localParallelism,
-                             int mapBatchSize) {
+    public BatchBenchmarkJob1(JetInstance jet, String host, int port, String executor, int jobBatchSize, int maxConcurrentOps, int localParallelism,
+                              int mapBatchSize) {
         this.runId = UuidUtil.newUnsecureUuidString();
         this.jet = jet;
         this.host = host;
@@ -69,7 +65,7 @@ public class BatchBenchmarkJob {
     private String runAndReport() {
         JobConfig config = new JobConfig();
         config.setStoreMetricsAfterJobCompletion(true);
-        config.addClass(BatchBenchmarkJob.class);
+        config.addClass(BatchBenchmarkJob1.class);
         config.addPackage("com.hazelcast.jet.grpc.greeter");
 
         Job job = jet.newJob(pipeline, config);
@@ -85,27 +81,27 @@ public class BatchBenchmarkJob {
         return String.format(FORMAT, pipelineType, maxConcurrentOps, localParallelism, itemsPerSecond);
     }
 
-    public BatchBenchmarkJob withUnaryPipeline() {
+    public BatchBenchmarkJob1 withUnaryPipeline() {
         pipelineType = "unary";
         pipeline = unary(runId + pipelineType, host, port, maxConcurrentOps, localParallelism, executor, jobBatchSize);
         return this;
     }
 
-    public BatchBenchmarkJob withBidirectinalStreamingPipeline() {
+    public BatchBenchmarkJob1 withBidirectinalStreamingPipeline() {
         pipelineType = "bidi";
         pipeline = bidirectinalStreaming(runId + pipelineType, host, port, maxConcurrentOps,
                 localParallelism, executor, jobBatchSize);
         return this;
     }
 
-    public BatchBenchmarkJob withUnaryBatchPipeline() {
+    public BatchBenchmarkJob1 withUnaryBatchPipeline() {
         pipelineType = "unary-batch";
         pipeline = unaryBatch(runId + pipelineType, host, port, mapBatchSize,
                 localParallelism, executor, jobBatchSize);
         return this;
     }
 
-    public BatchBenchmarkJob withBidirectionalStreamingBatchPipeline() {
+    public BatchBenchmarkJob1 withBidirectionalStreamingBatchPipeline() {
         pipelineType = "bidi-batch";
         pipeline = bidirectionalStreamingBatch(runId + pipelineType, host, port, mapBatchSize, localParallelism,
                 executor, jobBatchSize);
@@ -115,7 +111,7 @@ public class BatchBenchmarkJob {
     public static void main(String[] args) {
         JetInstance jet = Jet.bootstrappedInstance();
 
-        String host = "13.250.7.39";//Utils.getProp("localhost");
+        String host = "localhost";//Utils.getProp("localhost");
         int port = 9000; // Utils.getIntProp("8080");
         String executor = "direct" ; //Utils.getProp("executor");
         int mapBatchSize = 1024; // Utils.getIntProp("mapBatchSize", "1024");
@@ -129,25 +125,25 @@ public class BatchBenchmarkJob {
         for (int maxConcurrentOps : maxConcurrentOpsValues) {
             for (int localParallelism : localParallelismValues) {
                 String result;
-//               result = new BatchBenchmarkJob(jet, host, port, executor, jobBatchSize, maxConcurrentOps,
+//               result = new BatchBenchmarkJob1(jet, host, port, executor, jobBatchSize, maxConcurrentOps,
 //                        localParallelism, mapBatchSize)
 //                        .withUnaryPipeline()
 //                        .runAndReport();
 //                results.add(result);
 //
-//                result = new BatchBenchmarkJob(jet, host, port, executor, jobBatchSize, maxConcurrentOps,
+//                result = new BatchBenchmarkJob1(jet, host, port, executor, jobBatchSize, maxConcurrentOps,
 //                        localParallelism, mapBatchSize)
 //                        .withBidirectinalStreamingPipeline()
 //                        .runAndReport();
 //                results.add(result);
 
-                result = new BatchBenchmarkJob(jet, host, port, executor, jobBatchSize * batchMultiplier, maxConcurrentOps,
+                result = new BatchBenchmarkJob1(jet, host, port, executor, jobBatchSize * batchMultiplier, maxConcurrentOps,
                         localParallelism, mapBatchSize)
                         .withUnaryBatchPipeline()
                         .runAndReport();
                 results.add(result);
 //
-//                result = new BatchBenchmarkJob(jet, host, port, executor, jobBatchSize * batchMultiplier, maxConcurrentOps,
+//                result = new BatchBenchmarkJob1(jet, host, port, executor, jobBatchSize * batchMultiplier, maxConcurrentOps,
 //                        localParallelism, mapBatchSize)
 //                        .withBidirectionalStreamingBatchPipeline()
 //                        .runAndReport();
@@ -194,23 +190,16 @@ public class BatchBenchmarkJob {
 
     public static Pipeline unaryBatch(String runId, String host, int port, int batchSize, int localParallelism,
                                       String executor, int jobBatchSize) {
-        ServiceFactory<?, ? extends GrpcService<ChangeRequestList, ChangeReplyList>> unaryService = unaryService(
+        ServiceFactory<?, ? extends GrpcService<HelloRequestList, HelloReplyList>> unaryService = unaryService(
                 () -> Utils.createChannelBuilder(host, port, executor),
-                channel -> BalanceServiceGrpc.newStub(channel)::changeRequestListUnary
+                channel -> GreeterGrpc.newStub(channel)::sayHelloListUnary
         );
 
         Pipeline p = Pipeline.create();
-
         p.readFrom(intSource(jobBatchSize))
          .mapUsingServiceAsyncBatched(unaryService, batchSize,
-                 (service, items) -> {
-                    List<ChangeRequest> changeRequests = items.stream().map(item ->
-                            ChangeRequest.newBuilder().setRid("r" + item).setAmount(item).setType(item % 2).setUid("u"+ (item%2 + 1)).build())
-                            .collect(Collectors.toList());
-
-                    return service.call(ChangeRequestList.newBuilder().addAllChangeRequests(changeRequests).build())
-                             .thenApply(ChangeReplyList::getStatusList);
-                 }
+                 (service, items) -> service.call(HelloRequestList.newBuilder().addAllValue(items).build())
+                                            .thenApply(HelloReplyList::getValueList)
          )
          .setLocalParallelism(localParallelism)
          .aggregate(AggregateOperations.counting())

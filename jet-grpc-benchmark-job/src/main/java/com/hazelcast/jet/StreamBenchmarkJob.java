@@ -76,14 +76,14 @@ public class StreamBenchmarkJob {
         JetInstance jet = Jet.bootstrappedInstance();
         String runId = UuidUtil.newUnsecureUuidString();
 
-        String host = getProp("localhost");
-        int port = getIntProp("8080");
-        int maxItemsPerSecond = getIntProp("maxItemsPerSecond", "10000000");
-        int windowSizeSeconds = getIntProp("windowSize", "30");
+        String host = "3.0.92.168" ;//getProp("loclocalhostalhost");
+        int port = 8080; //getIntProp("8080");
+        int maxItemsPerSecond = 10000000; //getIntProp("maxItemsPerSecond", "10000000");
+        int windowSizeSeconds = 30; //getIntProp("windowSize", "30");
         long windowSizeMillis = Duration.ofSeconds(windowSizeSeconds).toMillis();
-        int mapBatchSize = getIntProp("mapBatchSize", "1024");
-        int maxConcurrentOps = getIntProp("maxConcurrentOps", "4");
-        int localParallelism = getIntProp("localParallelism", String.valueOf(Runtime.getRuntime().availableProcessors()));
+        int mapBatchSize = 1024; //getIntProp("mapBatchSize", "1024");
+        int maxConcurrentOps = 4; //getIntProp("maxConcurrentOps", "4");
+        int localParallelism = 12; //getIntProp("localParallelism", String.valueOf(Runtime.getRuntime().availableProcessors()));
 
         List<String> results = synchronizedList(new ArrayList<>());
 

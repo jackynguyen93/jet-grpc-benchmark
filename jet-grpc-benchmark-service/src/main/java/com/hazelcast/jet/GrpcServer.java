@@ -12,7 +12,8 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
-import io.grpc.netty.shaded.io.netty.channel.nio.NioEventLoop;
+//import io.grpc.netty.shaded.io.netty.channel.epoll.EpollEventLoopGroup;
+//import io.grpc.netty.shaded.io.netty.channel.epoll.EpollServerSocketChannel;
 import io.grpc.netty.shaded.io.netty.channel.nio.NioEventLoopGroup;
 import io.grpc.netty.shaded.io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.grpc.netty.shaded.io.netty.util.concurrent.DefaultThreadFactory;
@@ -50,7 +51,7 @@ public class GrpcServer {
     }
 
     private static Server createServer(String executor, BindableService service) throws IOException {
-        final int port = 8080;
+        final int port = 8081;
         int processors = Runtime.getRuntime().availableProcessors();
         NettyServerBuilder builder = NettyServerBuilder.forPort(port);
 

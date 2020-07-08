@@ -9,9 +9,7 @@ import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
-import java.util.Collections;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 
@@ -92,57 +90,64 @@ public class JedisHelper {
 
     @PostConstruct
     public void initialize() {
-        jedisPool = new JedisPool(redisHost);
-
+        Set sentinels = new HashSet<>();
+        sentinels.add("127.0.0.1:26379");
+        //JedisSentinelPool jedisPool = new JedisSentinelPool("master01", sentinels);
+        jedisPool = new JedisPool();
         jedis = jedisPool.getResource();
        // jedis = new Jedis(new UdsJedisSocketFactory());
         pipelined = jedis.pipelined();
         hashScript = jedis.scriptLoad(SUBTRACT_BALANCE_LUA_SCRIPT);
-        new Thread(() -> {
-            System.out.println("Start sync pipeline job");
-            while(true) {
-                doSyncPipeline();
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+
+        for (int i = 0; i < 4; i ++) {
+            new Thread(() -> {
+                System.out.println("Start sync pipeline job");
+                while(true) {
+                    doSyncPipeline();
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
-            }
-        }).start();
+            }).start();
+        }
+
         //LOG.info("test");
 
     }
 
     public void subtractBalance(Order order) {
-        synchronized (pipelined) {
-            subtractRequestQueue.add(order);
-            pipelined.evalsha(hashScript, Collections.singletonList(getBalanceKey(order.getUid())),
-                    Collections.singletonList(String.valueOf(order.getAmount())));
-        }
+        subtractRequestQueue.add(order);
     }
 
     public void doSyncPipeline() {
-        System.out.println(subtractRequestQueue.size());
-        if (subtractRequestQueue.size() > 0) {
-            int numOfReqs = subtractRequestQueue.size();
-            String[] orderIds = new String[numOfReqs];
-            for (int index = 0; index < numOfReqs; index ++) {
-                Order order = subtractRequestQueue.poll();
-                orderIds[index] = order.getId();
-            }
-            synchronized (pipelined) {
+        //System.out.println(subtractRequestQueue.size());
+        synchronized (pipelined) {
+            if (subtractRequestQueue.size() > 0) {
+                int numOfReqs = subtractRequestQueue.size();
+                String[] orderIds = new String[numOfReqs];
+                for (int index = 0; index < numOfReqs; index ++) {
+                    Order order = subtractRequestQueue.poll();
+                    orderIds[index] = order.getId();
+                    pipelined.evalsha(hashScript, Collections.singletonList(getBalanceKey(order.getUid())),
+                            Collections.singletonList(String.valueOf(order.getAmount())));
+                }
+                // synchronized (pipelined) {
                 long start = System.currentTimeMillis();
                 List<Object> responseList = pipelined.syncAndReturnAll();
                 long time = System.currentTimeMillis() - start;
                 System.out.println("Took: " + time + " size " + responseList.size());
+                //  }
+
+
+
+                // for (int i = 0; i < responseList.size(); i++) {
+                //      //LOG.info("order id: " + orderIds[i] + " ,result: " + responseList.get(i));
+                //   }
             }
-
-
-
-           // for (int i = 0; i < responseList.size(); i++) {
-          //      //LOG.info("order id: " + orderIds[i] + " ,result: " + responseList.get(i));
-         //   }
         }
+
     }
 
     private String getBalanceKey(String uid) {
