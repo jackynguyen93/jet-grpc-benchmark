@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class GrpcClient {
     public static void main(String[] args) throws InterruptedException {
-        ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 8080)
+        ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 9000)
                 .directExecutor()
                 .keepAliveTime(1, TimeUnit.MINUTES)
                 .keepAliveTimeout(5, TimeUnit.SECONDS)

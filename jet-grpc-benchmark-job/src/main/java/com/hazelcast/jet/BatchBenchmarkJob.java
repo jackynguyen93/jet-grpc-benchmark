@@ -115,7 +115,7 @@ public class BatchBenchmarkJob {
     public static void main(String[] args) {
         JetInstance jet = Jet.bootstrappedInstance();
 
-        String host = "13.250.7.39";//Utils.getProp("localhost");
+        String host = "localhost";//Utils.getProp("localhost");
         int port = 9000; // Utils.getIntProp("8080");
         String executor = "direct" ; //Utils.getProp("executor");
         int mapBatchSize = 1024; // Utils.getIntProp("mapBatchSize", "1024");
@@ -205,7 +205,7 @@ public class BatchBenchmarkJob {
          .mapUsingServiceAsyncBatched(unaryService, batchSize,
                  (service, items) -> {
                     List<ChangeRequest> changeRequests = items.stream().map(item ->
-                            ChangeRequest.newBuilder().setRid("r" + item).setAmount(item).setType(item % 2).setUid("u"+ (item%2 + 1)).build())
+                            ChangeRequest.newBuilder().setRid("r" + item).setAmount(1).setType(item % 2).setUid(item % 2).build())
                             .collect(Collectors.toList());
 
                     return service.call(ChangeRequestList.newBuilder().addAllChangeRequests(changeRequests).build())
@@ -242,20 +242,23 @@ public class BatchBenchmarkJob {
     public static Pipeline bidirectionalStreamingBatch(String runId, String host, int port,
                                                        int batchSize, int localParallelism, String executor,
                                                        int jobBatchSize) {
-        ServiceFactory<?, ? extends GrpcService<HelloRequestList, HelloReplyList>> bidiService =
+        ServiceFactory<?, ? extends GrpcService<ChangeRequestList, ChangeReplyList>> bidiService =
                 bidirectionalStreamingService(
                         () -> Utils.createChannelBuilder(host, port, executor),
-                        channel -> GreeterGrpc.newStub(channel)::sayHelloListBidirectional
+                        channel -> BalanceServiceGrpc.newStub(channel)::changeRequestListBidirectional
                 );
 
         Pipeline p = Pipeline.create();
         p.readFrom(intSource(jobBatchSize))
          .mapUsingServiceAsyncBatched(bidiService,
                  batchSize,
-                 (service, itemList) -> {
-                     CompletableFuture<HelloReplyList> future =
-                             service.call(HelloRequestList.newBuilder().addAllValue(itemList).build());
-                     return future.thenApply(HelloReplyList::getValueList);
+                 (service, items) -> {
+                     List<ChangeRequest> changeRequests = items.stream().map(item ->
+                             ChangeRequest.newBuilder().setRid("r" + item).setAmount(1).setType(item % 2).setUid(item%2).build())
+                             .collect(Collectors.toList());
+                     CompletableFuture<ChangeReplyList> future =
+                             service.call(ChangeRequestList.newBuilder().addAllChangeRequests(changeRequests).build());
+                     return future.thenApply(ChangeReplyList::getStatusList);
                  })
          .setLocalParallelism(localParallelism)
          .aggregate(AggregateOperations.counting())

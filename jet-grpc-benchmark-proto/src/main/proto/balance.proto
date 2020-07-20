@@ -15,7 +15,7 @@ message ChangeRequest {
   string rid = 1;
   int32 type = 2;
   int64 amount = 3;
-  string uid = 4;
+  int32 uid = 4;
 }
 
 message ChangeRequestList {
