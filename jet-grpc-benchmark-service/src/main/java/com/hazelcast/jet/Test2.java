@@ -69,7 +69,7 @@ public class Test2 {
         }
         latch.await();
         long time = System.currentTimeMillis() - start;
-        System.out.println("Took: " + time + " avg/s " + (THREADS * 100_000) / (time / 1000));
+        System.out.println("Took: " + time + " avg/s " + (THREADS * NUM * BATCH) / (time / 1000));
     }
 
     private static ChangeRequestList createBatch() {

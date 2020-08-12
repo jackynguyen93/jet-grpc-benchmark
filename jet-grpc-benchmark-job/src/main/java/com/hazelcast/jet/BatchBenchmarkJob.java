@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -52,6 +53,7 @@ public class BatchBenchmarkJob {
     private int localParallelism;
     private int mapBatchSize;
     private Pipeline pipeline;
+    private static int NUMBER_USER = 1000;
 
     public BatchBenchmarkJob(JetInstance jet, String host, int port, String executor, int jobBatchSize, int maxConcurrentOps, int localParallelism,
                              int mapBatchSize) {
@@ -204,8 +206,12 @@ public class BatchBenchmarkJob {
         p.readFrom(intSource(jobBatchSize))
          .mapUsingServiceAsyncBatched(unaryService, batchSize,
                  (service, items) -> {
-                    List<ChangeRequest> changeRequests = items.stream().map(item ->
-                            ChangeRequest.newBuilder().setRid("r" + item).setAmount(1).setType(item % 2).setUid(item % 2).build())
+                    List<ChangeRequest> changeRequests = items.stream().map(item -> {
+                                int type = item % 2 == 0 ? 1 : 2;
+                                String rid = UUID.randomUUID().toString();
+                                return  ChangeRequest.newBuilder().setRid(rid).setAmount(1).setType(type).setUid(item % 2).build();
+                            }
+                           )
                             .collect(Collectors.toList());
 
                     return service.call(ChangeRequestList.newBuilder().addAllChangeRequests(changeRequests).build())
@@ -254,7 +260,7 @@ public class BatchBenchmarkJob {
                  batchSize,
                  (service, items) -> {
                      List<ChangeRequest> changeRequests = items.stream().map(item ->
-                             ChangeRequest.newBuilder().setRid("r" + item).setAmount(1).setType(item % 2).setUid(item%2).build())
+                             ChangeRequest.newBuilder().setRid("r" + item).setAmount(1).setType(item % 2).setUid(item % NUMBER_USER).build())
                              .collect(Collectors.toList());
                      CompletableFuture<ChangeReplyList> future =
                              service.call(ChangeRequestList.newBuilder().addAllChangeRequests(changeRequests).build());
