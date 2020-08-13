@@ -53,7 +53,7 @@ public class BatchBenchmarkJob {
     private int localParallelism;
     private int mapBatchSize;
     private Pipeline pipeline;
-    private static int NUMBER_USER = 1000;
+    private static int NUMBER_USER = 50000;
 
     public BatchBenchmarkJob(JetInstance jet, String host, int port, String executor, int jobBatchSize, int maxConcurrentOps, int localParallelism,
                              int mapBatchSize) {
@@ -121,7 +121,7 @@ public class BatchBenchmarkJob {
         int port = 9000; // Utils.getIntProp("8080");
         String executor = "direct" ; //Utils.getProp("executor");
         int mapBatchSize = 1024; // Utils.getIntProp("mapBatchSize", "1024");
-        int jobBatchSize = 500000; //Utils.getIntProp("jobBatchSize", "50000");
+        int jobBatchSize = 1000000; //Utils.getIntProp("jobBatchSize", "50000");
         int batchMultiplier = 10; //Utils.getIntProp("multiplier", "10");
         int[] maxConcurrentOpsValues = new int[] {128} ;//Utils.getIntPropArray("maxConcurrentOps", "4");
         int[] localParallelismValues =  new int[] {108}; //Utils.getIntPropArray("localParallelism",String.valueOf(Runtime.getRuntime().availableProcessors()));
@@ -207,9 +207,9 @@ public class BatchBenchmarkJob {
          .mapUsingServiceAsyncBatched(unaryService, batchSize,
                  (service, items) -> {
                     List<ChangeRequest> changeRequests = items.stream().map(item -> {
-                                int type = item % 2 == 0 ? 1 : 2;
+                                int type = Math.random() > 0.5 ? 1 : 2;
                                 String rid = UUID.randomUUID().toString();
-                                return  ChangeRequest.newBuilder().setRid(rid).setAmount(1).setType(type).setUid(item % 2).build();
+                                return  ChangeRequest.newBuilder().setRid(rid).setAmount(type == 1 ? 10 : 1).setType(type).setUid(item % NUMBER_USER).build();
                             }
                            )
                             .collect(Collectors.toList());
